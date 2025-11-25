@@ -60,6 +60,21 @@ Example:
 
 ---
 
+### Test Login Accounts
+
+**Patient Login**
+- Username: patient
+- Password: pass
+
+**Another Patient**
+- Username: patient2
+- Password: pass2
+
+**Doctor Login**
+- Username: drsmith
+- Password: pass123
+
+
 ## ✔️ Features
 
 ### **Patient**
