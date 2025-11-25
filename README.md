@@ -37,8 +37,11 @@ OnlineHealthConsultation/
 `src/com/healthcare/utils/DBConfig.java`
 
 Example:
+
        public static final String URL = "jdbc:mysql://localhost:3306/healthcare_db";
+       
        public static final String USER = "root";
+       
        public static final String PASSWORD = "your_password";
 
        
