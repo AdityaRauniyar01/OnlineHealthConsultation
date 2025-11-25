@@ -1,16 +1,86 @@
-# OnlineHealthConsultation
+📋 Online Health Consultation System
 
-Minimal Java project skeleton for an online health consultation app.
+A Java Swing + MySQL based desktop application for booking and managing doctor–patient appointments.
+This project demonstrates GUI development, JDBC operations, DAO patterns, and database interaction.
 
-Structure:
-- `src/com/healthcare` - main package
-  - `models/` - `User`, `Patient`, `Doctor`, `Appointment`
-  - `dao/` - data-access skeletons including `DBConnection`
-  - `gui/` - Swing frames `LoginFrame`, `PatientDashboard`
-  - `utils/` - helper utilities
-- `database/schema.sql` - example DB schema
+---
 
-How to use:
-- Open the project in your IDE (IntelliJ / Eclipse).
-- Implement `DBConnection.getConnection()` and DAO methods.
-- Compile with `javac` and run `com.healthcare.Main`.
+## 📂 Project Structure
+
+OnlineHealthConsultation/  
+│── src/  
+│   └── com/healthcare/  
+│       ├── dao/  
+│       ├── gui/  
+│       ├── models/  
+│       ├── utils/  
+│       └── Main.java  
+│── database/  
+│   └── schema.sql  
+│── lib/  
+│   └── mysql-connector-j-9.5.0.jar  
+│── out/ (compiled .class files)  
+└── README.md  
+
+---
+
+## 🗄️ Database Setup (MySQL)
+
+1. Open MySQL Workbench or Command Line  
+2. Create database:
+      CREATE DATABASE healthcare_db;
+      USE healthcare_db;
+      SOURCE database/schema.sql;
+
+3. Update DB credentials inside:
+
+`src/com/healthcare/utils/DBConfig.java`
+
+Example:
+       public static final String URL = "jdbc:mysql://localhost:3306/healthcare_db";
+       public static final String USER = "root";
+       public static final String PASSWORD = "your_password";
+
+       
+---
+
+## ▶️ Running the Project
+
+### **Compile**
+            javac -cp "lib/mysql-connector-j-9.5.0.jar" -d out $(Get-ChildItem -Recurse src/*.java)
+
+### **Run**
+            java -cp "out;lib/mysql-connector-j-9.5.0.jar" com.healthcare.Main
+
+---
+
+## ✔️ Features
+
+### **Patient**
+- Login  
+- Book a doctor appointment  
+- View appointment history  
+
+### **Doctor**
+- Login  
+- See assigned appointments  
+- Mark appointments as completed  
+
+---
+
+## 🛠 Technologies Used
+- Java 17+  
+- Swing (GUI)  
+- MySQL 8+  
+- JDBC + DAO Pattern  
+
+---
+
+## 🚀 Future Enhancements
+- Admin module  
+- Appointment cancellation/reschedule  
+- Prescription module  
+- Email/SMS notifications  
+
+            
+    
