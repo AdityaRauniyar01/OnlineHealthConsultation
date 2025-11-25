@@ -28,11 +28,14 @@ OnlineHealthConsultation/
 
 1. Open MySQL Workbench or Command Line  
 2. Create database:
+   
       CREATE DATABASE healthcare_db;
+   
       USE healthcare_db;
+   
       SOURCE database/schema.sql;
 
-3. Update DB credentials inside:
+4. Update DB credentials inside:
 
 `src/com/healthcare/utils/DBConfig.java`
 
