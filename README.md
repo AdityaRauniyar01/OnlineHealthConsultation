@@ -98,8 +98,8 @@ Example:
 ---
 
 ## 🚀 Future Enhancements
-- Admin module  
-- Appointment cancellation/reschedule  
+- Admin module
+- video/audio consultation
 - Prescription module  
 - Email/SMS notifications  
 
