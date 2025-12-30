@@ -101,7 +101,16 @@ Example:
 - Admin module
 - video/audio consultation
 - Prescription module  
-- Email/SMS notifications  
+- Email/SMS notifications
+
+- ## Review-2 Enhancements
+
+- Strict MVC architecture using GUI, Service, and DAO layers
+- JDBC transaction management with commit/rollback
+- 20-minute interval enforcement between doctor appointments
+- Robust client-side and server-side validation
+- Improved error handling and status management
+
 
             
     
