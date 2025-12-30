@@ -1,24 +1,24 @@
 package com.healthcare.gui;
 
-import com.healthcare.dao.AppointmentDAO;
 import com.healthcare.models.Appointment;
 import com.healthcare.models.Patient;
-
-import javax.swing.*;
-import javax.swing.table.DefaultTableModel;
+import com.healthcare.service.AppointmentService;
 import java.awt.*;
-import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import javax.swing.*;
+import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.table.DefaultTableModel;
 
 /**
  * Shows all appointments for the logged-in patient.
- * Allows cancel and reschedule.
+ * Allows cancellation of appointments.
+ * Uses color coding for appointment status.
  */
 public class PatientAppointmentsFrame extends JFrame {
 
     private final Patient patient;
-    private final AppointmentDAO appointmentDAO;
+    private final AppointmentService appointmentService;
 
     private JTable table;
     private DefaultTableModel tableModel;
@@ -28,7 +28,7 @@ public class PatientAppointmentsFrame extends JFrame {
 
     public PatientAppointmentsFrame(Patient patient) {
         this.patient = patient;
-        this.appointmentDAO = new AppointmentDAO();
+        this.appointmentService = new AppointmentService();
 
         setTitle("My Appointments - " + patient.getName());
         setSize(700, 400);
@@ -62,27 +62,27 @@ public class PatientAppointmentsFrame extends JFrame {
             }
         };
 
-        // ✅ create table FIRST
         table = new JTable(tableModel);
         table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        table.setRowHeight(24);                        // ✅ style AFTER creation
+        table.setRowHeight(24);
         table.setShowGrid(true);
         table.setGridColor(Color.LIGHT_GRAY);
+
+        // ✅ ENHANCEMENT 3: STATUS COLOR CODING
+        table.getColumnModel().getColumn(3)
+                .setCellRenderer(new StatusColorRenderer());
 
         add(new JScrollPane(table), BorderLayout.CENTER);
 
         JPanel btnPanel = new JPanel();
         JButton refreshBtn = new JButton("Refresh");
         JButton cancelBtn = new JButton("Cancel Appointment");
-        JButton rescheduleBtn = new JButton("Reschedule");
 
         refreshBtn.addActionListener(e -> loadAppointments());
         cancelBtn.addActionListener(e -> cancelSelected());
-        rescheduleBtn.addActionListener(e -> rescheduleSelected());
 
         btnPanel.add(refreshBtn);
         btnPanel.add(cancelBtn);
-        btnPanel.add(rescheduleBtn);
 
         add(btnPanel, BorderLayout.SOUTH);
     }
@@ -90,11 +90,14 @@ public class PatientAppointmentsFrame extends JFrame {
     private void loadAppointments() {
         tableModel.setRowCount(0);
 
-        List<Appointment> list = appointmentDAO.getAppointmentsForPatient(patient.getId());
+        List<Appointment> list =
+                appointmentService.getAppointmentsForPatient(patient.getId());
+
         for (Appointment a : list) {
             String dt = a.getAppointmentDateTime() != null
                     ? a.getAppointmentDateTime().format(FORMATTER)
                     : "N/A";
+
             tableModel.addRow(new Object[]{
                     a.getId(),
                     a.getDoctorId(),
@@ -110,14 +113,10 @@ public class PatientAppointmentsFrame extends JFrame {
             JOptionPane.showMessageDialog(this, "Please select an appointment first.");
             return null;
         }
-        Object val = tableModel.getValueAt(row, 0);
-        if (!(val instanceof Integer)) {
-            JOptionPane.showMessageDialog(this, "Invalid selection.");
-            return null;
-        }
-        return (Integer) val;
+        return (Integer) tableModel.getValueAt(row, 0);
     }
 
+    // ENHANCEMENT 2: CANCEL APPOINTMENT
     private void cancelSelected() {
         Integer id = getSelectedAppointmentId();
         if (id == null) return;
@@ -125,44 +124,50 @@ public class PatientAppointmentsFrame extends JFrame {
         int confirm = JOptionPane.showConfirmDialog(
                 this,
                 "Cancel appointment ID " + id + "?",
-                "Confirm",
+                "Confirm Cancellation",
                 JOptionPane.YES_NO_OPTION
         );
         if (confirm != JOptionPane.YES_OPTION) return;
 
-        boolean ok = appointmentDAO.updateStatus(id, "CANCELLED");
+        boolean ok = appointmentService.cancelAppointment(id);
         if (ok) {
-            JOptionPane.showMessageDialog(this, "Appointment cancelled.");
+            JOptionPane.showMessageDialog(this, "Appointment cancelled successfully.");
             loadAppointments();
         } else {
             JOptionPane.showMessageDialog(this, "Failed to cancel appointment.");
         }
     }
 
-    private void rescheduleSelected() {
-        Integer id = getSelectedAppointmentId();
-        if (id == null) return;
+    // 🎨 CUSTOM RENDERER FOR STATUS COLUMN
+    private static class StatusColorRenderer extends DefaultTableCellRenderer {
 
-        String newDateTimeStr = JOptionPane.showInputDialog(
-                this,
-                "Enter new date & time (YYYY-MM-DDTHH:MM):",
-                "2025-12-01T15:30"
-        );
-        if (newDateTimeStr == null || newDateTimeStr.isBlank()) {
-            return; // user cancelled dialog
-        }
+        @Override
+        public Component getTableCellRendererComponent(
+                JTable table, Object value, boolean isSelected,
+                boolean hasFocus, int row, int column) {
 
-        try {
-            LocalDateTime newDt = LocalDateTime.parse(newDateTimeStr.trim());
-            boolean ok = appointmentDAO.rescheduleAppointment(id, newDt);
-            if (ok) {
-                JOptionPane.showMessageDialog(this, "Appointment rescheduled.");
-                loadAppointments();
-            } else {
-                JOptionPane.showMessageDialog(this, "Failed to reschedule appointment.");
+            Component c = super.getTableCellRendererComponent(
+                    table, value, isSelected, hasFocus, row, column);
+
+            if (!isSelected && value != null) {
+                String status = value.toString();
+
+                switch (status) {
+                    case "BOOKED":
+                        c.setForeground(new Color(0, 102, 204)); // Blue
+                        break;
+                    case "CANCELLED":
+                        c.setForeground(Color.RED);
+                        break;
+                    case "COMPLETED":
+                        c.setForeground(new Color(0, 153, 0)); // Green
+                        break;
+                    default:
+                        c.setForeground(Color.BLACK);
+                }
             }
-        } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this, "Invalid date/time format.");
+
+            return c;
         }
     }
 }

@@ -1,8 +1,8 @@
 package com.healthcare.gui;
 
-import com.healthcare.dao.AppointmentDAO;
 import com.healthcare.models.Appointment;
 import com.healthcare.models.Patient;
+import com.healthcare.service.AppointmentService;
 import java.awt.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -10,23 +10,20 @@ import javax.swing.*;
 
 /**
  * UI Frame that allows a Patient to book an appointment with a doctor.
- * Uses AppointmentDAO to store the appointment in database.
+ * Acts as Controller: validates input and calls Service layer.
  */
 public class BookAppointmentFrame extends JFrame {
 
     private final Patient patient;
-    private final AppointmentDAO appointmentDAO;
 
     private JTextField doctorIdField;
     private JTextField dateTimeField;
 
-    // Formatter for consistent date-time parsing
     private static final DateTimeFormatter FORMATTER =
             DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm");
 
     public BookAppointmentFrame(Patient patient) {
         this.patient = patient;
-        this.appointmentDAO = new AppointmentDAO();
 
         setTitle("Book Appointment");
         setSize(450, 220);
@@ -36,79 +33,51 @@ public class BookAppointmentFrame extends JFrame {
         initUI();
     }
 
-    /**
-     * Builds the UI layout.
-     */
-private void initUI() {
-    JPanel main = new JPanel(new BorderLayout(10, 10));
-    main.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+    private void initUI() {
+        JPanel main = new JPanel(new BorderLayout(10, 10));
+        main.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
-    JLabel title = new JLabel("Book Appointment", SwingConstants.CENTER);
-    title.setFont(new Font("Segoe UI", Font.BOLD, 18));
-    main.add(title, BorderLayout.NORTH);
+        JLabel title = new JLabel("Book Appointment", SwingConstants.CENTER);
+        title.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        main.add(title, BorderLayout.NORTH);
 
-    JPanel form = new JPanel(new GridLayout(2, 2, 10, 15));
+        JPanel form = new JPanel(new GridLayout(2, 2, 10, 15));
 
-    form.add(new JLabel("Doctor ID:"));
-    doctorIdField = new JTextField();
-    form.add(doctorIdField);
+        form.add(new JLabel("Doctor ID:"));
+        doctorIdField = new JTextField();
+        form.add(doctorIdField);
 
-    form.add(new JLabel("Date & Time:"));
-    dateTimeField = new JTextField("2025-11-25T15:30");
-    form.add(dateTimeField);
+        form.add(new JLabel("Date & Time (YYYY-MM-DDTHH:MM):"));
+        dateTimeField = new JTextField("2025-11-25T15:30");
+        form.add(dateTimeField);
 
-    main.add(form, BorderLayout.CENTER);
+        main.add(form, BorderLayout.CENTER);
 
-    JButton bookBtn = new JButton("Book Appointment");
-    bookBtn.addActionListener(e -> handleBook());
-    main.add(bookBtn, BorderLayout.SOUTH);
+        JButton bookBtn = new JButton("Book Appointment");
+        bookBtn.addActionListener(e -> handleBooking());
+        main.add(bookBtn, BorderLayout.SOUTH);
 
-    add(main);
-}
-
-private void handleBook() {
-    try {
-        int doctorId = Integer.parseInt(doctorIdField.getText().trim());
-        LocalDateTime dateTime = LocalDateTime.parse(dateTimeField.getText().trim());
-
-        Appointment appt = new Appointment();
-        appt.setPatientId(patient.getId());
-        appt.setDoctorId(doctorId);
-        appt.setAppointmentDateTime(dateTime);
-        appt.setStatus("BOOKED");
-
-        if (appointmentDAO.bookAppointment(appt)) {
-            JOptionPane.showMessageDialog(this, "Appointment booked successfully!");
-            dispose();
-        } else {
-            JOptionPane.showMessageDialog(this, "Failed to book appointment.");
-        }
-    } catch (Exception ex) {
-        JOptionPane.showMessageDialog(this, "Invalid input: " + ex.getMessage());
+        add(main);
     }
-}
 
-    /**
-     * Handles booking logic & validation.
-     */
     private void handleBooking() {
         try {
-            // ----- Doctor ID validation -----
             String doctorIdText = doctorIdField.getText().trim();
             if (doctorIdText.isEmpty()) {
                 showError("Doctor ID cannot be empty.");
                 return;
             }
+
             int doctorId = Integer.parseInt(doctorIdText);
             if (doctorId <= 0) {
                 showError("Doctor ID must be a positive number.");
                 return;
             }
 
-            // ----- Date-Time validation -----
             LocalDateTime appointmentDateTime;
             try {
-                appointmentDateTime = LocalDateTime.parse(dateTimeField.getText().trim(), FORMATTER);
+                appointmentDateTime = LocalDateTime.parse(
+                        dateTimeField.getText().trim(), FORMATTER);
             } catch (Exception ex) {
                 showError("Invalid date format! Use YYYY-MM-DDTHH:MM");
                 return;
@@ -119,29 +88,28 @@ private void handleBook() {
                 return;
             }
 
-            // ----- Build appointment object -----
             Appointment appt = new Appointment();
             appt.setPatientId(patient.getId());
             appt.setDoctorId(doctorId);
             appt.setAppointmentDateTime(appointmentDateTime);
             appt.setStatus("BOOKED");
-            appt.setNotes(null); // optional
+            appt.setNotes(null);
 
-            // ----- Save into database -----
-            if (appointmentDAO.bookAppointment(appt)) {
-                JOptionPane.showMessageDialog(this,
-                        "Appointment booked successfully!",
-                        "Success",
-                        JOptionPane.INFORMATION_MESSAGE);
-                dispose();
-            } else {
-                showError("Failed to book appointment. Check doctor ID or database connection.");
-            }
+            AppointmentService service = new AppointmentService();
+            service.bookAppointment(appt); // may throw exception
+
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Appointment booked successfully!",
+                    "Success",
+                    JOptionPane.INFORMATION_MESSAGE);
+            dispose();
 
         } catch (NumberFormatException e) {
             showError("Doctor ID must be a number.");
         } catch (Exception e) {
-            showError("Unexpected Error: " + e.getMessage());
+            // ✅ SHOW EXACT ERROR (doctor unavailable, DB error, etc.)
+            showError(e.getMessage());
         }
     }
 

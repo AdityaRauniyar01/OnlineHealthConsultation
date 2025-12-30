@@ -1,8 +1,9 @@
 package com.healthcare.gui;
 
-import com.healthcare.dao.AppointmentDAO;
 import com.healthcare.models.Appointment;
 import com.healthcare.models.Doctor;
+import com.healthcare.service.AppointmentService;
+
 import java.awt.*;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -11,17 +12,17 @@ import javax.swing.table.DefaultTableModel;
 
 /**
  * Dashboard for doctors.
- * Shows all appointments for the logged-in doctor in a table,
- * and allows updating the status to COMPLETED.
+ * Shows all appointments for the logged-in doctor
+ * and allows marking appointments as COMPLETED.
  */
 public class DoctorDashboard extends JFrame {
 
     private final Doctor doctor;
-    private final AppointmentDAO appointmentDAO;
+    private final AppointmentService appointmentService;
+
     private JTable table;
     private DefaultTableModel tableModel;
 
-    // Single shared formatter for the date-time column
     private static final DateTimeFormatter DATE_TIME_FORMATTER =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
@@ -31,7 +32,7 @@ public class DoctorDashboard extends JFrame {
         }
 
         this.doctor = doctor;
-        this.appointmentDAO = new AppointmentDAO();
+        this.appointmentService = new AppointmentService();
 
         setTitle("Doctor Dashboard - " + doctor.getName());
         setSize(800, 400);
@@ -42,49 +43,40 @@ public class DoctorDashboard extends JFrame {
         loadAppointments();
     }
 
-    /**
-     * Builds the UI (table + buttons panel).
-     */
     private void initUI() {
         setLayout(new BorderLayout(10, 10));
 
-        // Top label / header
-JLabel titleLabel = new JLabel("Appointments for " + doctor.getName(), SwingConstants.CENTER);
-titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 20));
-titleLabel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-add(titleLabel, BorderLayout.NORTH);
-table.setRowHeight(24);
-table.setShowGrid(true);
-table.setGridColor(Color.LIGHT_GRAY);
+        JLabel titleLabel = new JLabel(
+                "Appointments for " + doctor.getName(),
+                SwingConstants.CENTER
+        );
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 20));
+        titleLabel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        add(titleLabel, BorderLayout.NORTH);
 
-
-        // Table setup
         String[] columnNames = {"ID", "Patient ID", "Date & Time", "Status"};
         tableModel = new DefaultTableModel(columnNames, 0) {
-            // Make all cells non-editable from UI
+
             @Override
             public boolean isCellEditable(int row, int column) {
                 return false;
             }
 
-            // Ensure correct column class for better sorting / rendering
             @Override
             public Class<?> getColumnClass(int columnIndex) {
-                return switch (columnIndex) {
-                    case 0, 1 -> Integer.class; // ID, Patient ID
-                    default -> String.class;    // Date & Time, Status
-                };
+                return (columnIndex == 0 || columnIndex == 1)
+                        ? Integer.class : String.class;
             }
         };
 
         table = new JTable(tableModel);
+        table.setRowHeight(26);
+        table.setShowGrid(true);
+        table.setGridColor(Color.LIGHT_GRAY);
         table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        table.getTableHeader().setReorderingAllowed(false);
 
-        JScrollPane scrollPane = new JScrollPane(table);
-        add(scrollPane, BorderLayout.CENTER);
+        add(new JScrollPane(table), BorderLayout.CENTER);
 
-        // Bottom buttons panel
         JPanel bottomPanel = new JPanel();
         JButton refreshButton = new JButton("Refresh");
         JButton markCompletedButton = new JButton("Mark as Completed");
@@ -98,32 +90,26 @@ table.setGridColor(Color.LIGHT_GRAY);
         add(bottomPanel, BorderLayout.SOUTH);
     }
 
-    /**
-     * Loads appointments for the current doctor and fills the table.
-     */
     private void loadAppointments() {
-        // Clear previous rows
         tableModel.setRowCount(0);
 
-        List<Appointment> appointments = appointmentDAO.getAppointmentsForDoctor(doctor.getId());
+        List<Appointment> appointments =
+                appointmentService.getAppointmentsForDoctor(doctor.getId());
+
         for (Appointment a : appointments) {
             String formattedDateTime = a.getAppointmentDateTime() != null
                     ? a.getAppointmentDateTime().format(DATE_TIME_FORMATTER)
                     : "N/A";
 
-            Object[] row = new Object[]{
+            tableModel.addRow(new Object[]{
                     a.getId(),
                     a.getPatientId(),
                     formattedDateTime,
                     a.getStatus()
-            };
-            tableModel.addRow(row);
+            });
         }
     }
 
-    /**
-     * Marks the selected appointment as COMPLETED (if not already).
-     */
     private void markSelectedAsCompleted() {
         int selectedRow = table.getSelectedRow();
         if (selectedRow == -1) {
@@ -131,16 +117,8 @@ table.setGridColor(Color.LIGHT_GRAY);
             return;
         }
 
-        Object idValue = tableModel.getValueAt(selectedRow, 0);
-        Object statusValue = tableModel.getValueAt(selectedRow, 3);
-
-        if (!(idValue instanceof Integer) || !(statusValue instanceof String)) {
-            showMessage("Invalid row data selected.", "Error");
-            return;
-        }
-
-        int appointmentId = (Integer) idValue;
-        String currentStatus = (String) statusValue;
+        int appointmentId = (Integer) tableModel.getValueAt(selectedRow, 0);
+        String currentStatus = (String) tableModel.getValueAt(selectedRow, 3);
 
         if ("COMPLETED".equalsIgnoreCase(currentStatus)) {
             showMessage("This appointment is already marked as COMPLETED.", "Info");
@@ -155,17 +133,20 @@ table.setGridColor(Color.LIGHT_GRAY);
         );
 
         if (confirm == JOptionPane.YES_OPTION) {
-            boolean updated = appointmentDAO.updateStatus(appointmentId, "COMPLETED");
+            boolean updated =
+                    appointmentService.markAppointmentCompleted(appointmentId);
+
             if (updated) {
                 showMessage("Status updated successfully.", "Success");
-                loadAppointments(); // refresh table
+                loadAppointments();
             } else {
-                showMessage("Failed to update status. Please try again.", "Error");
+                showMessage("Failed to update status.", "Error");
             }
         }
     }
 
     private void showMessage(String msg, String title) {
-        JOptionPane.showMessageDialog(this, msg, title, JOptionPane.INFORMATION_MESSAGE);
+        JOptionPane.showMessageDialog(this, msg, title,
+                JOptionPane.INFORMATION_MESSAGE);
     }
 }
